@@ -1,0 +1,7 @@
+Set,Label,Frequency
+train,healthy,1472
+train,powdery_mildew,1472
+validation,healthy,210
+validation,powdery_mildew,210
+test,healthy,422
+test,powdery_mildew,422

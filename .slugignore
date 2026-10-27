@@ -1,0 +1,4 @@
+jupyter_notebooks/
+inputs/
+requirements-dev.txt
+*.ipynb

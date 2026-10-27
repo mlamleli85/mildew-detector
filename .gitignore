@@ -1,0 +1,19 @@
+# Kaggle credentials - NEVER commit this
+kaggle.json
+
+# Raw and split image data (too large for GitHub / Heroku)
+inputs/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.vscode/

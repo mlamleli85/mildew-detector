@@ -1,10 +1,10 @@
 # Mildew Detector in Cherry Leaves
 
-**Live dashboard:** _add your Heroku link here_
+**Live dashboard:** [mildew-detector-mn.herokuapp.com](https://mildew-detector-mn-741688c18cc2.herokuapp.com)
 
 The Mildew Detector is a machine learning dashboard that tells, from a single photo of a cherry leaf, whether the leaf is **healthy** or has **powdery mildew**. It was built for Farmy & Foods so that farm staff no longer need to inspect every cherry tree by hand.
 
-_Add a screenshot of the dashboard here._
+![Mildew Detector dashboard showing a prediction](docs/dashboard.png)
 
 ## Table of contents
 
@@ -25,7 +25,7 @@ _Add a screenshot of the dashboard here._
 ## Dataset Content
 
 - The dataset is sourced from [Kaggle](https://www.kaggle.com/codeinstitute/cherry-leaves). It contains photos of cherry leaves provided by Farmy & Foods, taken from their own crops.
-- It holds a little over 4,000 images in two classes of roughly equal size: **healthy** leaves and leaves with **powdery mildew**, a fungal disease that shows as white, powdery patches.
+- It holds 4,208 images in two classes of equal size (2,104 each): **healthy** leaves and leaves with **powdery mildew**, a fungal disease that shows as white, powdery patches.
 - The images are 256 x 256 pixel RGB photos. For this project they are resized to 128 x 128.
 - The cherry crop is one of Farmy & Foods' most valuable products, and the company is concerned about supplying the market with compromised produce.
 
@@ -43,11 +43,11 @@ The IT team proposed a machine learning system that detects mildew instantly fro
 
 | # | Hypothesis | Validation | Conclusion |
 |---|---|---|---|
-| 1 | Leaves with powdery mildew show white, powdery marks that visually set them apart from healthy leaves. | Image montages, average and variability images, and the difference between the average images. | _Fill in after running notebook 02._ |
-| 2 | Because the mildew is white, infected leaves have a higher mean brightness than healthy leaves. | Mean pixel brightness per image, compared between the two classes with a Mann-Whitney U test (significance level α = 0.05). | _Fill in with the numbers from `brightness_test.json`._ |
-| 3 | A convolutional neural network can classify unseen leaves as healthy or infected with at least 97% accuracy. | Accuracy on the test set, which is never used during training or model selection. | _Fill in with the test accuracy from notebook 03._ |
+| 1 | Leaves with powdery mildew show white, powdery marks that visually set them apart from healthy leaves. | Image montages, average and variability images, and the difference between the average images. | **Confirmed.** The montages clearly show white or grey powdery patches on infected leaves, and the average infected leaf is a duller, greyer green than the average healthy leaf. The difference image shows the largest difference in the background (lighter in the healthy photos), a possible bias that should be checked on field photos. |
+| 2 | Because the mildew is white, infected leaves have a higher mean brightness than healthy leaves. | Mean pixel brightness per image, compared between the two classes with a Mann-Whitney U test (significance level α = 0.05). | **Rejected.** The difference is significant (p = 1.2 × 10⁻⁴¹), but healthy leaves are brighter (mean 0.539) than infected leaves (0.448). Much of this comes from the lighter background in the healthy photos, as well as the duller colour of infected leaves. The model should therefore be tested on field photos. |
+| 3 | A convolutional neural network can classify unseen leaves as healthy or infected with at least 97% accuracy. | Accuracy on the test set, which is never used during training or model selection. | **Confirmed.** The model reached 99.88% accuracy on 844 test images. All infected leaves were detected; one healthy leaf was wrongly flagged as mildew. |
 
-**Next steps if the hypotheses hold:** roll the detector out to farm staff, keep a manual check for low-confidence predictions, and collect images from other crops to extend the system.
+**Next steps for the client:** roll the detector out to farm staff, keep a manual check for low-confidence predictions (below 80%), test the model on photos taken in normal field conditions to rule out the background bias found in hypotheses 1 and 2, and collect images from other crops to extend the system.
 
 ## Rationale to map the business requirements to the Data Visualisations and ML tasks
 
@@ -87,6 +87,18 @@ The IT team proposed a machine learning system that detects mildew instantly fro
 - **Relevance for the user:** staff can treat infected trees straight away and skip healthy ones, saving time and protecting the quality of the crop.
 - **Heuristics:** the current heuristic is a manual visual check of leaf samples, which takes about 30 minutes per tree and does not scale.
 - **Training data:** the Kaggle cherry leaves dataset, split 70% train, 10% validation and 20% test. Features are the image pixels; the target is the label.
+- **Result:** the final model reached **99.88% accuracy** on the test set (843 of 844 leaves correct), so the business case is met.
+
+### Model iterations
+
+Two versions of the CNN were trained and compared on the validation set (notebook 03):
+
+| Version | Augmentation | Dropout | Epochs trained | Validation loss | Validation accuracy |
+|---|---|---|---|---|---|
+| A - baseline | No | 0.2 | 4 | 0.0407 | 99.76% |
+| B - regularised | Yes (flip, rotation, zoom) | 0.5 | 5 | 0.0454 | 99.76% |
+
+Both versions use three Conv2D + MaxPooling blocks, a Dense layer of 128 neurons, the Adam optimiser and binary cross-entropy loss. Early stopping (patience 3, restoring the best weights) was used in both. Version A had the lower validation loss and was selected. The difference is very small; version B may cope better with photos taken in different conditions and is a good candidate to retest on field photos.
 
 ## Dashboard Design
 
@@ -146,7 +158,19 @@ inputs/                     # image data (created by notebook 01, not in Git)
 
 ## Bugs
 
-_List any bugs you found and how you fixed them. List any known unfixed bugs._
+### Fixed bugs
+
+| Bug | Cause | Fix |
+|---|---|---|
+| `pip install` failed on macOS with "No matching distribution found for tensorflow-cpu" | `tensorflow-cpu` is only published for Linux and Windows | Used environment markers in `requirements.txt`: `tensorflow-cpu` on Linux (Heroku), `tensorflow` on macOS |
+| The prediction report crashed with `ImportError: pyarrow requires NumPy 2.0 or newer` | Pip installed the latest pyarrow, but TensorFlow 2.18 requires NumPy below 2.1 | Pinned `pyarrow==18.1.0` in `requirements.txt` |
+| Streamlit logged an Arrow serialisation error on the test results table | The "Test set result" column mixed numbers and text | Formatted both values as text so the column has one data type |
+| The hypothesis 2 conclusion did not match the result | The dashboard only handled "confirmed" or "not significant", not a significant result in the opposite direction | Added a third case that reports the hypothesis as rejected |
+| Flake8 reported lines longer than 79 characters | Long strings and function calls | Split long strings and moved repeated logic into helper functions |
+
+### Unfixed bugs
+
+- No known bugs. The app runs on a Heroku Eco dyno, so the first page load after a period of inactivity can take 20–30 seconds while the app wakes up.
 
 ## Testing
 
@@ -154,24 +178,27 @@ _List any bugs you found and how you fixed them. List any known unfixed bugs._
 
 | Feature | Action | Expected result | Result |
 |---|---|---|---|
-| Navigation | Click each page in the sidebar | The page loads | |
-| Leaf Visualiser | Tick each checkbox | Plots and interpretations appear | |
-| Montage selector | Switch between labels | Montage changes | |
-| Upload one image | Upload a healthy leaf | Prediction "Healthy" with probability chart | |
-| Upload several images | Upload 3+ mixed leaves | One result per image and a report table | |
-| Wrong file | Upload a non-image renamed to .jpg | Error message, other images still processed | |
-| Download report | Click "Download report as CSV" | CSV file downloads | |
-| ML Performance | Open the page | Success statement, charts and tables shown | |
+| Navigation | Click each page in the sidebar | The page loads | Pass |
+| Leaf Visualiser | Tick each checkbox | Plots and interpretations appear | Pass |
+| Montage selector | Switch between labels | Montage changes | Pass |
+| Upload healthy images | Upload 2 healthy test leaves | "Healthy" with confidence and probability chart | Pass (99.7%, 99.8%) |
+| Upload infected images | Upload 2 powdery mildew test leaves | "Powdery mildew detected" with confidence and chart | Pass (100%, 100%) |
+| Multiple uploads | Upload several images at once | One result per image and a report table | Pass |
+| Download report | Click "Download report as CSV" | CSV file downloads | Pass |
+| Interactive charts | Hover over Plotly charts | Values shown on hover, zoom tools available | Pass |
+| Hypotheses page | Open the page | Three hypotheses with conclusions and brightness statistics | Pass |
+| ML Performance | Open the page | Success statement, charts, tables and confusion matrix | Pass |
+| Deployed app | Repeat the tests above on Heroku | Same results as locally | Pass |
 
 ### Code validation
 
-All Python files were checked with a PEP 8 linter (for example the [CI Python Linter](https://pep8ci.herokuapp.com/)). _Add results._
+All Python files in `app.py`, `app_pages/` and `src/` pass Flake8 with no warnings (`flake8 app.py app_pages src --count` returns 0).
 
 ## Deployment
 
 ### Heroku
 
-- The app is live at: _add link_
+- The app is live at: https://mildew-detector-mn-741688c18cc2.herokuapp.com
 - Python version is set in `runtime.txt`. Only the packages the dashboard needs are in `requirements.txt`; notebook-only packages are in `requirements-dev.txt` to keep the Heroku slug small.
 - Large or unneeded files are excluded from Heroku with `.slugignore`.
 
@@ -185,7 +212,7 @@ Steps:
 ### Running locally
 
 1. Clone the repository and create a virtual environment with Python 3.12.
-2. `pip install -r requirements.txt -r requirements-dev.txt`
+2. `pip install -r requirements.txt -r requirements-dev.txt` (the correct TensorFlow package for your system is chosen automatically)
 3. Put your `kaggle.json` in the repository root and run the notebooks in order (01, 02, 03).
 4. `streamlit run app.py`
 
@@ -209,8 +236,8 @@ Steps:
 
 - The project brief and dataset come from [Code Institute](https://codeinstitute.net/) and [Kaggle](https://www.kaggle.com/codeinstitute/cherry-leaves).
 - The project structure follows the approach taught in the Code Institute Predictive Analytics module.
-- Information about powdery mildew: _add the source you used._
+- Information about powdery mildew of cherry: [Michigan State University Extension](https://www.canr.msu.edu/ipm/diseases/powdery_mildew_of_cherry) and [Penn State Extension](https://extension.psu.edu/powdery-mildew-of-cherry-and-plum-in-home-fruit-plantings).
 
 ### Acknowledgements
 
-- _Thank your mentor and anyone else who helped._
+- Thanks to my Code Institute mentor and the Student Care team for their support.

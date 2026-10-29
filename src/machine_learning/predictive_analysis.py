@@ -8,7 +8,7 @@ from tensorflow.keras.models import load_model
 from src.data_management import load_pkl_file, output_file
 
 MODEL_FILE = "mildew_detector_model.keras"
-CLASS_COLOURS = {"healthy": "#2e7d32", "powdery_mildew": "#b0b0b0"}
+CLASS_COLOURS = {"healthy": "#2e7d32", "powdery_mildew": "#c62828"}
 
 
 @st.cache_resource

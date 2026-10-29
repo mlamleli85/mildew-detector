@@ -1,4 +1,4 @@
-"""Small helper class that turns a list of page functions into a sidebar menu."""
+"""Helper class that turns a list of page functions into a sidebar menu."""
 import streamlit as st
 
 

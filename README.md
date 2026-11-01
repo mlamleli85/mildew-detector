@@ -41,11 +41,11 @@ The IT team proposed a machine learning system that detects mildew instantly fro
 
 ## Hypotheses and how to validate them
 
-| # | Hypothesis | Validation | Conclusion |
-|---|---|---|---|
-| 1 | Leaves with powdery mildew show white, powdery marks that visually set them apart from healthy leaves. | Image montages, average and variability images, and the difference between the average images. | **Confirmed.** The montages clearly show white or grey powdery patches on infected leaves, and the average infected leaf is a duller, greyer green than the average healthy leaf. The difference image shows the largest difference in the background (lighter in the healthy photos), a possible bias that should be checked on field photos. |
-| 2 | Because the mildew is white, infected leaves have a higher mean brightness than healthy leaves. | Mean pixel brightness per image, compared between the two classes with a Mann-Whitney U test (significance level α = 0.05). | **Rejected.** The difference is significant (p = 1.2 × 10⁻⁴¹), but healthy leaves are brighter (mean 0.539) than infected leaves (0.448). Much of this comes from the lighter background in the healthy photos, as well as the duller colour of infected leaves. The model should therefore be tested on field photos. |
-| 3 | A convolutional neural network can classify unseen leaves as healthy or infected with at least 97% accuracy. | Accuracy on the test set, which is never used during training or model selection. | **Confirmed.** The model reached 99.88% accuracy on 844 test images. All infected leaves were detected; one healthy leaf was wrongly flagged as mildew. |
+| #   | Hypothesis                                                                                                   | Validation                                                                                                                  | Conclusion                                                                                                                                                                                                                                                                                                                                     |
+| --- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Leaves with powdery mildew show white, powdery marks that visually set them apart from healthy leaves.       | Image montages, average and variability images, and the difference between the average images.                              | **Confirmed.** The montages clearly show white or grey powdery patches on infected leaves, and the average infected leaf is a duller, greyer green than the average healthy leaf. The difference image shows the largest difference in the background (lighter in the healthy photos), a possible bias that should be checked on field photos. |
+| 2   | Because the mildew is white, infected leaves have a higher mean brightness than healthy leaves.              | Mean pixel brightness per image, compared between the two classes with a Mann-Whitney U test (significance level α = 0.05). | **Rejected.** The difference is significant (p = 1.2 × 10⁻⁴¹), but healthy leaves are brighter (mean 0.539) than infected leaves (0.448). Much of this comes from the lighter background in the healthy photos, as well as the duller colour of infected leaves. The model should therefore be tested on field photos.                         |
+| 3   | A convolutional neural network can classify unseen leaves as healthy or infected with at least 97% accuracy. | Accuracy on the test set, which is never used during training or model selection.                                           | **Confirmed.** The model reached 99.88% accuracy on 844 test images. All infected leaves were detected; one healthy leaf was wrongly flagged as mildew.                                                                                                                                                                                        |
 
 **Next steps for the client:** roll the detector out to farm staff, keep a manual check for low-confidence predictions (below 80%), test the model on photos taken in normal field conditions to rule out the background bias found in hypotheses 1 and 2, and collect images from other crops to extend the system.
 
@@ -93,12 +93,32 @@ The IT team proposed a machine learning system that detects mildew instantly fro
 
 Two versions of the CNN were trained and compared on the validation set (notebook 03):
 
-| Version | Augmentation | Dropout | Epochs trained | Validation loss | Validation accuracy |
-|---|---|---|---|---|---|
-| A - baseline | No | 0.2 | 4 | 0.0407 | 99.76% |
-| B - regularised | Yes (flip, rotation, zoom) | 0.5 | 5 | 0.0454 | 99.76% |
+| Version         | Augmentation               | Dropout | Epochs trained | Validation loss | Validation accuracy |
+| --------------- | -------------------------- | ------- | -------------- | --------------- | ------------------- |
+| A - baseline    | No                         | 0.2     | 4              | 0.0407          | 99.76%              |
+| B - regularised | Yes (flip, rotation, zoom) | 0.5     | 5              | 0.0454          | 99.76%              |
 
 Both versions use three Conv2D + MaxPooling blocks, a Dense layer of 128 neurons, the Adam optimiser and binary cross-entropy loss. Early stopping (patience 3, restoring the best weights) was used in both. Version A had the lower validation loss and was selected. The difference is very small; version B may cope better with photos taken in different conditions and is a good candidate to retest on field photos.
+
+## Epics
+
+The project was broken into five epics, each covered by the user stories above:
+
+1. **Information gathering and data collection:** notebook 01 downloads the dataset from Kaggle and prepares it.
+2. **Data visualisation, cleaning and preparation:** notebook 01 removes non-image files and splits the data; notebook 02 studies the images.
+3. **Model training, optimisation and validation:** notebook 03 trains and compares two CNN versions and evaluates the chosen one on the test set.
+4. **Dashboard planning, design and development:** the five-page Streamlit dashboard.
+5. **Dashboard deployment and release:** deployed to Heroku.
+
+## Ethical and privacy considerations
+
+- The client provided the data under a non-disclosure agreement (NDA), so it should only be shared with professionals officially involved in the project. For this educational project, the dataset is the copy Code Institute published on Kaggle.
+- The image data is not stored in this repository: it is in `.gitignore` and is downloaded by notebook 01 when needed.
+- The images show only plant leaves and contain no personal data.
+
+## Image size
+
+The original images are 256 × 256 pixels. They were resized to 128 × 128, which keeps the mildew patches visible and makes the trained model 19.5 MB, well under GitHub's 100 MB file limit, so Git LFS was not needed. The model still met the 97% accuracy target.
 
 ## Dashboard Design
 
@@ -160,13 +180,13 @@ inputs/                     # image data (created by notebook 01, not in Git)
 
 ### Fixed bugs
 
-| Bug | Cause | Fix |
-|---|---|---|
-| `pip install` failed on macOS with "No matching distribution found for tensorflow-cpu" | `tensorflow-cpu` is only published for Linux and Windows | Used environment markers in `requirements.txt`: `tensorflow-cpu` on Linux (Heroku), `tensorflow` on macOS |
-| The prediction report crashed with `ImportError: pyarrow requires NumPy 2.0 or newer` | Pip installed the latest pyarrow, but TensorFlow 2.18 requires NumPy below 2.1 | Pinned `pyarrow==18.1.0` in `requirements.txt` |
-| Streamlit logged an Arrow serialisation error on the test results table | The "Test set result" column mixed numbers and text | Formatted both values as text so the column has one data type |
-| The hypothesis 2 conclusion did not match the result | The dashboard only handled "confirmed" or "not significant", not a significant result in the opposite direction | Added a third case that reports the hypothesis as rejected |
-| Flake8 reported lines longer than 79 characters | Long strings and function calls | Split long strings and moved repeated logic into helper functions |
+| Bug                                                                                    | Cause                                                                                                           | Fix                                                                                                       |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `pip install` failed on macOS with "No matching distribution found for tensorflow-cpu" | `tensorflow-cpu` is only published for Linux and Windows                                                        | Used environment markers in `requirements.txt`: `tensorflow-cpu` on Linux (Heroku), `tensorflow` on macOS |
+| The prediction report crashed with `ImportError: pyarrow requires NumPy 2.0 or newer`  | Pip installed the latest pyarrow, but TensorFlow 2.18 requires NumPy below 2.1                                  | Pinned `pyarrow==18.1.0` in `requirements.txt`                                                            |
+| Streamlit logged an Arrow serialisation error on the test results table                | The "Test set result" column mixed numbers and text                                                             | Formatted both values as text so the column has one data type                                             |
+| The hypothesis 2 conclusion did not match the result                                   | The dashboard only handled "confirmed" or "not significant", not a significant result in the opposite direction | Added a third case that reports the hypothesis as rejected                                                |
+| Flake8 reported lines longer than 79 characters                                        | Long strings and function calls                                                                                 | Split long strings and moved repeated logic into helper functions                                         |
 
 ### Unfixed bugs
 
@@ -176,19 +196,19 @@ inputs/                     # image data (created by notebook 01, not in Git)
 
 ### Manual testing
 
-| Feature | Action | Expected result | Result |
-|---|---|---|---|
-| Navigation | Click each page in the sidebar | The page loads | Pass |
-| Leaf Visualiser | Tick each checkbox | Plots and interpretations appear | Pass |
-| Montage selector | Switch between labels | Montage changes | Pass |
-| Upload healthy images | Upload 2 healthy test leaves | "Healthy" with confidence and probability chart | Pass (99.7%, 99.8%) |
-| Upload infected images | Upload 2 powdery mildew test leaves | "Powdery mildew detected" with confidence and chart | Pass (100%, 100%) |
-| Multiple uploads | Upload several images at once | One result per image and a report table | Pass |
-| Download report | Click "Download report as CSV" | CSV file downloads | Pass |
-| Interactive charts | Hover over Plotly charts | Values shown on hover, zoom tools available | Pass |
-| Hypotheses page | Open the page | Three hypotheses with conclusions and brightness statistics | Pass |
-| ML Performance | Open the page | Success statement, charts, tables and confusion matrix | Pass |
-| Deployed app | Repeat the tests above on Heroku | Same results as locally | Pass |
+| Feature                | Action                              | Expected result                                             | Result              |
+| ---------------------- | ----------------------------------- | ----------------------------------------------------------- | ------------------- |
+| Navigation             | Click each page in the sidebar      | The page loads                                              | Pass                |
+| Leaf Visualiser        | Tick each checkbox                  | Plots and interpretations appear                            | Pass                |
+| Montage selector       | Switch between labels               | Montage changes                                             | Pass                |
+| Upload healthy images  | Upload 2 healthy test leaves        | "Healthy" with confidence and probability chart             | Pass (99.7%, 99.8%) |
+| Upload infected images | Upload 2 powdery mildew test leaves | "Powdery mildew detected" with confidence and chart         | Pass (100%, 100%)   |
+| Multiple uploads       | Upload several images at once       | One result per image and a report table                     | Pass                |
+| Download report        | Click "Download report as CSV"      | CSV file downloads                                          | Pass                |
+| Interactive charts     | Hover over Plotly charts            | Values shown on hover, zoom tools available                 | Pass                |
+| Hypotheses page        | Open the page                       | Three hypotheses with conclusions and brightness statistics | Pass                |
+| ML Performance         | Open the page                       | Success statement, charts, tables and confusion matrix      | Pass                |
+| Deployed app           | Repeat the tests above on Heroku    | Same results as locally                                     | Pass                |
 
 ### Code validation
 
